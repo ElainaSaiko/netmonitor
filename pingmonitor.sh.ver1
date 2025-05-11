@@ -1,0 +1,32 @@
+#!/bin/bash
+
+# 获取当前时间
+CURRENT_TIME=$(($(date +"%s")-1))
+
+# 设置工作目录
+WORK_DIR=/opt/netmonitor
+
+# 检测数据库
+#sh $WORK_DIR/checkdatabase.sh
+
+# MySQL数据库连接信息
+DB_USER="root"
+DB_PASS="Furina@2o24!"
+DB_NAME="netmonitor"
+
+for TARGET_HOST in $(cat $WORK_DIR/hosts.list); do    
+    # 执行ping命令，并解析延迟时间
+    PING_RESULT=$(ping -c3 -q -n $TARGET_HOST | grep 'rtt min/avg/max/mdev' | awk -F'/' '{print $5}')
+
+    # 设置表名
+    TABLE_NAME=${TARGET_HOST//./_}_delayTime
+
+    # 检查是否成功获取到延迟时间
+    if [ -n "$PING_RESULT" ]; then
+    # 连接到MySQL数据库并插入数据
+    mysql -u$DB_USER -p$DB_PASS -e "INSERT INTO $TABLE_NAME (timestamp,delayTime) VALUES ('$CURRENT_TIME','$PING_RESULT')" $DB_NAME
+    else
+    # ping超时，插入数据9999
+    mysql -u$DB_USER -p$DB_PASS -e "INSERT INTO $TABLE_NAME (timestamp,delayTime) VALUES ('$CURRENT_TIME','9999')" $DB_NAME
+    fi
+done
